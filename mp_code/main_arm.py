@@ -468,6 +468,7 @@ def main():
     # Create the Tkinter root window and run the visualizer application
     root = tk.Tk()
     app = Visualizer(root, args)
+    # app.update_waypoints()
     root.mainloop()
 
 
