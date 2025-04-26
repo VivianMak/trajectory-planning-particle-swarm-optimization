@@ -4,7 +4,7 @@ from typing import List
 
 import matplotlib.pyplot as plt
 
-from mp_code.helper_fcns.utils import EndEffector, rotm_to_euler
+from simulator.helper_fcns.utils import EndEffector, rotm_to_euler
 
 
 class Particle():

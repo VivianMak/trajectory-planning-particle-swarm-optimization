@@ -9,7 +9,7 @@ class MultiAxisTrajectoryGenerator():
     Supports linear, cubic, quintic polynomial, and trapezoidal velocity profiles.
     """
     
-    def __init__(self, method="quintic",
+    def __init__(self, method="trapezoid",
                  mode="joint",
                  interval=[0,1],
                  ndof=1,
@@ -65,16 +65,6 @@ class MultiAxisTrajectoryGenerator():
             self.m = QuinticPolynomial(self)
         elif method == "trapezoid":
             self.m = TrapezoidVelocity(self)
-        elif method == "s-curve":
-            self.m = SCurveTrajectoryGenerator(
-                interval=interval,
-                ndof=ndof,
-                start_pos=start_pos,
-                final_pos=final_pos,
-                j_max=50.0,
-                a_max=10.0,
-                v_max=None
-                )
 
 
     
@@ -287,19 +277,24 @@ class TrapezoidVelocity():
         self.T = trajgen.T                     # total motion duration
         self.ndof = trajgen.ndof               # number of degrees of freedom
         self.X = [None] * self.ndof            # placeholder for computed profiles
-        # Fraction of total time allocated to accel/decel
-        self.accel_time_ratio = 0.2            # 20% of T to accelerate
-        self.decel_time_ratio = 0.2            # 20% of T to decelerate
+        
+        # Check if optimization parameters are provided
+        if hasattr(trajgen, 'optimization_params'):
+            # Use optimized parameters
+            self.accel_time_ratio = trajgen.optimization_params.get('t1', 0.2)
+            self.decel_time_ratio = 1.0 - trajgen.optimization_params.get('t2', 0.8)
+            self.v_max_scale = trajgen.optimization_params.get('v_max', 1.0)
+        else:
+            # Use default parameters
+            self.accel_time_ratio = 0.2            # 20% of T to accelerate
+            self.decel_time_ratio = 0.2            # 20% of T to decelerate
+            self.v_max_scale = 1.0
+            
         self.params = [None] * self.ndof       # store kinematic parameters
 
     def solve(self):
         """
-        Compute parameters for each DOF:
-        - t_accel: duration of acceleration phase
-        - t_cruise: duration of constant-speed cruise phase
-        - t_decel: end time of deceleration (equal to total T)
-        - v_cruise: constant cruise speed to satisfy boundary conditions
-        - accel/decel magnitudes based on v_cruise
+        Compute parameters for each DOF with optional PSO-optimized scaling.
         """
         for i in range(self.ndof):
             # Phase durations
@@ -310,9 +305,14 @@ class TrapezoidVelocity():
             # Displacement to cover
             total_distance = self.final_pos[i] - self.start_pos[i]
 
-            # Solve for cruise velocity using area under velocity-time graph:
-            # distance = v_cruise*t_cruise + 0.5*v_cruise*t_accel + 0.5*v_cruise*t_decel
-            v_cruise = total_distance / (t_cruise + 0.5*t_accel + 0.5*t_decel)
+            # Solve for cruise velocity with potential v_max scaling from PSO
+            v_cruise_base = total_distance / (t_cruise + 0.5*t_accel + 0.5*t_decel)
+            
+            # Apply velocity scaling if available
+            if hasattr(self, 'v_max_scale'):
+                v_cruise = v_cruise_base * self.v_max_scale
+            else:
+                v_cruise = v_cruise_base
 
             # Constant acceleration: a = v_cruise / t_accel
             accel = v_cruise / t_accel

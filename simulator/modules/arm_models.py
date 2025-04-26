@@ -1,7 +1,7 @@
 from math import sqrt, sin, cos, atan, atan2, degrees, pi
 import numpy as np
 from matplotlib.figure import Figure
-from helper_fcns.utils import EndEffector, rotm_to_euler
+from simulator.helper_fcns.utils import EndEffector, rotm_to_euler
 
 PI = 3.1415926535897932384
 
