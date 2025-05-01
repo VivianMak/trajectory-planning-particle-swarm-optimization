@@ -13,8 +13,8 @@ def main():
     print("Testing PSO Trajectory Optimization")
     print("-----------------------------------")
 
-    optimizer = TrajectoryOptimizer()
-    optimizer.test()
+    # optimizer = TrajectoryOptimizer()
+    # optimizer.test()
     
     # Define start and end joint positions
     start_joint = [0, 0, 0, 0, 0]
