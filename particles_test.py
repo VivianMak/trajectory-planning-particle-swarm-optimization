@@ -54,7 +54,7 @@ class PSO_TrajectoryOptimizer:
     """
     
     def __init__(self, start_pos, final_pos, metric="min_jerk", n_particles=50, 
-                 iterations=100, a_max=10.0, v_max=2.0, ndof=5):
+                 iterations=100, a_max=10.0, v_max=5.0, ndof=5):
         """Initialize the PSO trajectory optimizer.
         
         Args:
@@ -141,26 +141,9 @@ class PSO_TrajectoryOptimizer:
             w_jerk, w_time = 0.7, 0.3                # weights for combined metric
             base_fitness = -(w_jerk*jerk_metric - w_time*v_max)
 
-        PEN_SC   = 1000.0        # master penalty scale – tune if needed
-        penalty  = 0.0
 
-        # (a) ordering & positivity of times
-        if t1 <= 0.0:           penalty += PEN_SC * (0.0 - t1)**2
-        if t2 >= 1.0:           penalty += PEN_SC * (t2 - 1.0)**2
-        if t2 <= t1:            penalty += PEN_SC * (t1 - t2)**2
 
-        # (b) segment durations must be > 0
-        if const_time <= 0.0:   penalty += PEN_SC * (0.0 - const_time)**2
-
-        # (c) acceleration limit
-        accel_violation = max(0.0, max_accel - self.a_max_limit)
-        penalty        += PEN_SC * accel_violation**2
-
-        # (d) optional velocity ceiling
-        vel_violation   = max(0.0, v_max - self.v_max_limit)
-        penalty        += PEN_SC * vel_violation**2
-
-        return base_fitness - penalty
+        return base_fitness #- penalty
 
     
     def update_particle(self, particle, iteration):
