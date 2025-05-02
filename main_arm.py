@@ -319,7 +319,7 @@ class Visualizer:
         q0 = waypoints[0]
         qf = waypoints[1]
 
-        traj = MultiAxisTrajectoryGenerator(method="trapezoid", mode="task", interval=[0, 1], ndof=len(q0), start_pos=q0, final_pos=qf)
+        traj = MultiAxisTrajectoryGenerator(method="trapezoid", mode="task", interval=[0, 10], ndof=len(q0), start_pos=q0, final_pos=qf)
         traj_dofs = traj.generate(nsteps=50)
 
         for i in range(50):
@@ -347,7 +347,7 @@ class Visualizer:
         q0 = np.rad2deg(self.robot.solve_inverse_kinematics(EE_0))
         qf = np.rad2deg(self.robot.solve_inverse_kinematics(EE_f))
 
-        traj = MultiAxisTrajectoryGenerator(method="trapezoid", mode="joint", interval=[0, 1], ndof=len(q0), start_pos=q0, final_pos=qf)
+        traj = MultiAxisTrajectoryGenerator(method="trapezoid", mode="joint", interval=[0, 10], ndof=len(q0), start_pos=q0, final_pos=qf)
 
         traj_dofs = traj.generate(nsteps=50)
 
