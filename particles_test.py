@@ -2,9 +2,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from trajectory import MultiAxisTrajectoryGenerator
 import time
-from simulator.helper_fcns.utils import EndEffector
+from helper_fcns.utils import EndEffector
 import math
-from simulator.helper_fcns.utils import wraptopi
+from helper_fcns.utils import wraptopi
 from tkinter import ttk
 
 class Particle:
@@ -89,8 +89,8 @@ class PSO_TrajectoryOptimizer:
         self.alpha = 0.5      # Random Disturbance Coefficient
         self.w_min = 0.4      # Minimum inertia weight
         self.w_max = 0.9      # Maximum inertia weight
-        self.c1 = 2.0         # Cognitive learning factor
-        self.c2 = 2.0         # Social learning factor
+        self.alpha = 0.5      # Used for adaptive learning factors
+        self.beta = 0.5       # Used for adaptive learning factors  
         
         # Best solution found
         self.global_best = None
@@ -147,39 +147,66 @@ class PSO_TrajectoryOptimizer:
 
     
     def update_particle(self, particle, iteration):
-        """Update a particle's velocity and position based on PSO equations.
+        """Update a particle's velocity and position based on PSO equations with adaptive parameters.
         
         Args:
             particle: The particle to update
             iteration: Current iteration number
         """
-        # Calculate adaptive inertia weight
-        w = self.w_max - (self.w_max - self.w_min) * (iteration / self.iterations)
+        # Calculate fitness statistics for adaptive parameters
+        if len(self.fitness_history) > 0:
+            f_min = min([p.fitness for p in self.particles if p.fitness is not None])
+            f_sum = sum([p.fitness for p in self.particles if p.fitness is not None])
+            f_count = sum([1 for p in self.particles if p.fitness is not None])
+            f_avg = f_sum / f_count if f_count > 0 else 0
+        else:
+            f_min = 0
+            f_avg = 0
+        
+        # Calculate adaptive inertia weight based on fitness
+        if f_avg != f_min:
+            w = self.w_max - (self.w_max - self.w_min) * ((particle.fitness - f_min) / (f_avg - f_min))
+        else:
+            w = self.w_max
+        
+        # Calculate adaptive learning factors
+        if f_avg != f_min:
+            # Cognitive learning factor (personal best)
+            c1 = self.alpha * ((particle.fitness - f_min) / (f_avg - f_min)) + self.beta
+            # Social learning factor (global best)
+            c2 = self.alpha * (1 - (particle.fitness - f_min) / (f_avg - f_min)) + self.beta
+        else:
+            c1 = self.alpha + self.beta
+            c2 = self.alpha + self.beta
         
         # Generate random coefficients
         r1 = np.random.random(3)  # Cognitive component random factor
         r2 = np.random.random(3)  # Social component random factor
         D = np.random.uniform(-1.0, 1.0, 3)  # Random disturbance
         
-        # Calculate new velocity using PSO equation with random disturbance
-        cognitive_component = self.c1 * r1 * (particle.p_best - particle.pos)
-        social_component = self.c2 * r2 * (self.global_best - particle.pos)
-        disturbance = self.alpha * D
+        # Save old values
+        old_pos = particle.pos
+        old_vel = particle.vel
         
-        particle.vel = w * particle.vel + cognitive_component + social_component + disturbance
+        # Calculate new velocity using adaptive PSO equation with random disturbance
+        cognitive_component = c1 * r1 * (particle.p_best - old_pos)
+        social_component = c2 * r2 * (self.global_best - old_pos)
+        random_disturbance = self.alpha * D
+        
+        particle.vel = w * old_vel + cognitive_component + social_component + random_disturbance
         
         # Limit velocity to prevent too large steps
         particle.vel = np.clip(particle.vel, -0.1, 0.1)
         
         # Update position
-        particle.pos = particle.pos + particle.vel
+        particle.pos = old_pos + particle.vel
         
         # Apply constraints on position
         # Ensure t1 and t2 are in proper order (t1 < t2 < 1.0)
         particle.pos[0] = np.clip(particle.pos[0], self.bounds[0][0], self.bounds[0][1])  # t1
         particle.pos[1] = np.clip(particle.pos[1], max(particle.pos[0] + 0.1, self.bounds[1][0]), self.bounds[1][1])  # t2
         particle.pos[2] = np.clip(particle.pos[2], self.bounds[2][0], self.bounds[2][1])  # v_max
-    
+        
     def optimize(self, verbose=True):
         """Run the PSO optimization process.
         
@@ -274,117 +301,3 @@ class PSO_TrajectoryOptimizer:
             'final_pos': self.final_pos,
             'optimization_params': self.get_optimized_parameters()
         }
-
-
-# Integration with the Visualizer class
-def add_pso_trajectory_optimization(visualizer):
-    """Add PSO trajectory optimization to the existing visualizer.
-    
-    Args:
-        visualizer: The Visualizer instance to modify
-    """
-    # Add button to the UI
-    row_number = len(visualizer.control_frame.grid_slaves()) + 1
-    
-    visualizer.pso_button = ttk.Button(
-        visualizer.control_frame, 
-        text="Generate (PSO Optimized)", 
-        command=visualizer.generate_pso_optimized_trajectory
-    )
-    visualizer.pso_button.grid(column=1, row=row_number, columnspan=1, pady=2)
-    
-    # Add the PSO trajectory generation method
-    def generate_pso_optimized_trajectory(self):
-        """Generate and follow a PSO-optimized trajectory."""
-        print('Generating PSO-optimized trajectory...')
-        
-        waypoints = self.robot.get_waypoints()
-        
-        # For joint space trajectory
-        if self.robot_type in ['5-dof', 'scara']:
-            EE_0 = EndEffector(*waypoints[0][:3], 0, 0, 0)
-            EE_f = EndEffector(*waypoints[1][:3], 0, 0, 0)
-            
-            q0 = np.rad2deg(self.robot.solve_inverse_kinematics(EE_0))
-            qf = np.rad2deg(self.robot.solve_inverse_kinematics(EE_f))
-            
-            # Set up PSO optimizer
-            optimizer = PSO_TrajectoryOptimizer(
-                start_pos=q0,
-                final_pos=qf,
-                metric="min_jerk",
-                n_particles=30,
-                iterations=50,
-                ndof=len(q0)
-            )
-            
-            # Run optimization
-            optimizer.optimize()
-            
-            # Get configuration for trajectory generator
-            traj_config = optimizer.create_trajectory_config()
-            
-            # Create trajectory with your existing generator
-            traj = MultiAxisTrajectoryGenerator(**traj_config)
-            traj_dofs = traj.generate(nsteps=50)
-            
-            # Execute trajectory
-            for i in range(50):
-                theta = [dof[0][i] for i, dof in enumerate(traj_dofs)]
-                self.update_FK(theta=theta, display_traj=True)
-                time.sleep(0.05)
-        
-        else:  # For task space trajectory
-            # Extract start and end points
-            start_pos = waypoints[0]
-            final_pos = waypoints[1]
-            
-            # Create PSO optimizer for task space
-            optimizer = PSO_TrajectoryOptimizer(
-                start_pos=start_pos,
-                final_pos=final_pos,
-                metric="combined",
-                n_particles=30,
-                iterations=50,
-                ndof=len(start_pos)
-            )
-            
-            # Run optimization
-            optimizer.optimize()
-            
-            # Get configuration
-            traj_config = optimizer.create_trajectory_config()
-            
-            # Create trajectory
-            traj = MultiAxisTrajectoryGenerator(**traj_config)
-            traj_dofs = traj.generate(nsteps=50)
-            
-            # Execute trajectory
-            for i in range(50):
-                pos = [dof[0][i] for i, dof in enumerate(traj_dofs)]
-                ee = EndEffector(*pos, 0, -math.pi/2, wraptopi(math.atan2(pos[1], pos[0]) + math.pi))
-                self.update_IK(ee, soln=0, numerical=True, display_traj=True)
-                time.sleep(0.05)
-        
-        # Plot trajectory using the MultiAxisTrajectoryGenerator's plot method
-        traj.plot()
-        
-        # Also plot the optimization history
-        optimizer.plot_fitness_history()
-
-if __name__ == "__main__":
-    start_joint = [0, 0, 0, 0, 0]
-    end_joint = [30, 45, -15, 20, 10]
-    
-    # Create and run optimizer
-    optimizer = PSO_TrajectoryOptimizer(
-        start_pos=start_joint,
-        final_pos=end_joint,
-        metric="min_jerk",
-        n_particles=50,
-        iterations=100,
-        ndof=5
-    )
-
-    
-    print("Trajectory generated successfully!")

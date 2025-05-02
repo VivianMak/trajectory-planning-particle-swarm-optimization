@@ -4,7 +4,7 @@ from typing import List
 
 import matplotlib.pyplot as plt
 
-from simulator.helper_fcns.utils import EndEffector, rotm_to_euler
+from helper_fcns.utils import EndEffector, rotm_to_euler
 
 
 class Particle():
@@ -238,6 +238,7 @@ class TrajectoryOptimizer():
     #     plt.grid(True)
     #     plt.legend()
     #     plt.show()
+
 
 
 if __name__ == "__main__":
