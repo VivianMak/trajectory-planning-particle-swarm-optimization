@@ -443,7 +443,7 @@ class FiveDOFRobot:
             print("\n [ERROR] (Runtime) Joint limits exceeded! \n")
         
    
-    def calc_numerical_ik(self, EE: EndEffector, tol=1e-3, ilimit=1000):
+    def calc_numerical_ik(self, EE: EndEffector, tol=1e-3, ilimit=500):
         """ Calculate numerical inverse kinematics based on input coordinates. """
         
         Te_d = [EE.x, EE.y, EE.z]
@@ -664,7 +664,7 @@ class FiveDOFRobot:
         return T[0] @ T[1] @ T[2] @ T[3] @ T[4] @ np.array([0, 0, 0, 1])
 
 
-    def solve_inverse_kinematics(self, EE: EndEffector, tol=1e-2, ilimit=1000):
+    def solve_inverse_kinematics(self, EE: EndEffector, tol=1e-2, ilimit=500):
 
         Te_d = [EE.x, EE.y, EE.z]
         

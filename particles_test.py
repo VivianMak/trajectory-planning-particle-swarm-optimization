@@ -239,7 +239,7 @@ class PSO_TrajectoryOptimizer:
         # Main optimization loop
         for i in range(self.iterations):
             # Update each particle
-            for particle in self.particles:
+            for particle in self.particles-1:
                 # Update particle's position and velocity
                 self.update_particle(particle, i)
                 
