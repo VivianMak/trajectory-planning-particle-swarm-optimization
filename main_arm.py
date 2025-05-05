@@ -450,7 +450,7 @@ def main():
     parser = argparse.ArgumentParser(description="Robot Manipulator Visualization for Kinematics Analysis")
     parser.add_argument('--robot_type', 
                         help="Insert robot type, e.g., '2-dof', 'scara', '5-dof'. Default is '2-dof'.", 
-                        default='2-dof')
+                        default='5-dof')
     args = parser.parse_args()
 
     try:

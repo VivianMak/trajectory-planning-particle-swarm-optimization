@@ -122,7 +122,7 @@ class PSO_TrajectoryOptimizer:
 
         t1, t2, v_max = particle.pos
         accel_time  = t1
-        decel_time  = 1.0 - t2
+        decel_time  = 10.0 - t2
         const_time  = t2 - t1
 
         EPS = 1e-6
@@ -276,7 +276,7 @@ class PSO_TrajectoryOptimizer:
         if self.global_best is None:
             raise ValueError("Must run optimize() before getting parameters")
             
-        t1, t2, v_max = self.global_best
+        t1, t2, v_max = self.global_best 
         return {
             't1': t1,
             't2': t2,

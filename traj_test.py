@@ -155,6 +155,37 @@ def compare_with_default():
     
     plt.tight_layout()
     plt.show()
+
+    # fig, axs = plt.subplots(3, 5, figsize=(20, 10))  # 3 rows x 5 columns
+
+    # for joint_idx in range(5):
+    #     # Position (Row 0)
+    #     axs[0, joint_idx].plot(time, default_data[joint_idx][0], 'r--', label='Default')
+    #     axs[0, joint_idx].plot(time, optimized_data[joint_idx][0], 'b-', label='Optimized')
+    #     axs[0, joint_idx].set_title(f'Joint {joint_idx+1} - Position')
+    #     axs[0, joint_idx].set_ylabel('Position')
+    #     axs[0, joint_idx].grid(True)
+
+    #     # Velocity (Row 1)
+    #     axs[1, joint_idx].plot(time, default_data[joint_idx][1], 'r--')
+    #     axs[1, joint_idx].plot(time, optimized_data[joint_idx][1], 'b-')
+    #     axs[1, joint_idx].set_title(f'Joint {joint_idx+1} - Velocity')
+    #     axs[1, joint_idx].set_ylabel('Velocity')
+    #     axs[1, joint_idx].grid(True)
+
+    #     # Acceleration (Row 2)
+    #     axs[2, joint_idx].plot(time, default_data[joint_idx][2], 'r--')
+    #     axs[2, joint_idx].plot(time, optimized_data[joint_idx][2], 'b-')
+    #     axs[2, joint_idx].set_title(f'Joint {joint_idx+1} - Acceleration')
+    #     axs[2, joint_idx].set_ylabel('Acceleration')
+    #     axs[2, joint_idx].set_xlabel('Time')
+    #     axs[2, joint_idx].grid(True)
+
+    #     # Add legend to first subplot only (to avoid clutter)
+    #     axs[0, 0].legend()
+
+    # plt.tight_layout()
+    # plt.show()
     
     print("Comparison complete!")
 

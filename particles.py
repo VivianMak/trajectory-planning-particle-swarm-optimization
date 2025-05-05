@@ -155,8 +155,6 @@ class TrajectoryOptimizer():
 
         p.pos = old_pos + p.vel
     
-    def test(self):
-        print("HELLO???")
 
     def optimization(self, verbose=True):
         '''Runs the particle swarm optimization.'''

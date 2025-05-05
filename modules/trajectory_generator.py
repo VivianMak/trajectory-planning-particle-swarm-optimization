@@ -43,7 +43,7 @@ class MultiAxisTrajectoryGenerator():
         if mode == "joint":
             self.mode = "Joint Space"
             # self.labels = ['th1', 'th2', 'th3', 'th4', 'th5']
-            self.labels = [f'axis{i+1}' for i in range(self.ndof)]
+            self.labels = [f'Joint{i+1}' for i in range(self.ndof)]
         elif mode == "task":
             self.mode = "Task Space"
             self.labels = ['x', 'y', 'z']
@@ -103,19 +103,19 @@ class MultiAxisTrajectoryGenerator():
 
         for i in range(self.ndof):
             # position plot
-            self.sub1.plot(self.t, self.m.X[i][0], colors[i]+'o-', label=self.labels[i])
+            self.sub1.plot(self.t, self.m.X[i][0], colors[i]+'.-', label=self.labels[i], markersize=4)
             self.sub1.set_ylabel('position', fontsize=15)
             self.sub1.grid(True)
             self.sub1.legend()
         
             # velocity plot
-            self.sub2.plot(self.t, self.m.X[i][1], colors[i]+'o-', label=self.labels[i])
+            self.sub2.plot(self.t, self.m.X[i][1], colors[i]+'.-', label=self.labels[i], markersize=4)
             self.sub2.set_ylabel('velocity', fontsize=15)
             self.sub2.grid(True)
             self.sub2.legend()
 
             # acceleration plot
-            self.sub3.plot(self.t, self.m.X[i][2], colors[i]+'o-', label=self.labels[i])
+            self.sub3.plot(self.t, self.m.X[i][2], colors[i]+'.-', label=self.labels[i], markersize=4)
             self.sub3.set_ylabel('acceleration', fontsize=15)
             self.sub3.set_xlabel('Time (secs)', fontsize=18)
             self.sub3.grid(True)
