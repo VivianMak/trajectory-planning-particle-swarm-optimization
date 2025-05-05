@@ -10,6 +10,7 @@ from modules.trajectory_generator import MultiAxisTrajectoryGenerator
 import time
 from pynput import keyboard
 import yaml
+from pso_integration import add_pso_trajectory_optimization
 
 
 class Visualizer:
@@ -469,7 +470,6 @@ def main():
     
     # Add PSO functionality after Visualizer is fully initialized
     try:
-        from pso_integration import add_pso_trajectory_optimization
         add_pso_trajectory_optimization(app)
         print("PSO Trajectory Optimization functionality added successfully.")
     except ImportError as e:

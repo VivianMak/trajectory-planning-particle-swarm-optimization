@@ -1,205 +1,278 @@
 import numpy as np
-from numpy import random
-from typing import List
-
 import matplotlib.pyplot as plt
 
-from helper_fcns.utils import EndEffector, rotm_to_euler
-
-
-class Particle():
-    """Represents a hypothesis (particle) of the robot's pose consisting of x,y and theta (yaw)
-    Attributes:
-        x: the x-coordinate of the hypothesis relative to the map frame
-        y: the y-coordinate of the hypothesis relative ot the map frame
-        theta: the yaw of the hypothesis relative to the map frame
-        w: the particle weight (the class does not ensure that particle weights are normalized
+class Particle:
+    """Represents a particle in the PSO algorithm for trajectory optimization.
+    
+    Each particle represents a set of trajectory parameters: t1 (acceleration end time),
+    t2 (constant velocity end time), and v_max (maximum velocity).
     """
 
-    def __init__(self, pos=[0, 0, 0], vel=0.0):
-        """Construct a new Particle
-        pos: the x-coordinate of the hypothesis relative to the map frame
-        vel: the y-coordinate of the hypothesis relative ot the map frame
-        alpha: the particle weight (the class does not ensure that particle weights are normalized
-        """
-        self.pos = pos
-        self.vel = vel
-
-        self.p_best = None  # Particle Personal Best
-
-        self.particle_fitness_history = []
-
-
-
-
-class TrajectoryOptimizer():
-    '''This class tests out the PSO algorithm on different curves
-    Attributes List:
-        global_best = a shared value between all particles of the global best value??
-
-    
-    '''
-
-    def __init__(self, metric="min_jerk"):
-
-        self.n_particles = 50
-        self.iterations = 100
-        self.metric = metric
-
-        # Particle attributes
-        self.particle_cloud: List[Particle] = []    # Initialize the particle cloud (gaussian distribution around waypoints?)
-        self.a_max = 10
-        self.v_max = 20
-
-        self.fitness = None
-        self.fitness_history = []
-
-        self.alpha = 1      # Random Distrubance Coefficient
-        self.w_min = 1      # Intertia weight
-        self.w_max = 10
-        # self.c1 = 1     # Cognitive learning factors
-        # self.c2 = 1     # Social learning factors
-        self.alpha = np.random.rand([0.0, 1.0])
-        self.beta = np.random.rand([0.0, 1.0])
-
-        self.global_best = None
-
-        self.n_dof = 5
-
-    def initialize_particle_cloud(self):
-        """Iniitlize a set of particles"""
-
-
-        curve_param = [0.5, 0.5, 0.5]
-
-        particles_dict = {"t1_distr": [], "t2_distr": [], "v_max_distr": []}
-
-        # Create and add n particles to the particle cloud list
-        for i, key in enumerate(particles_dict.keys()):
-
-            particles_dict[key] = random.normal(
-                loc=curve_param[i], scale=1, size=100
-            )
+    def __init__(self, pos=None, vel=None, bounds=None):
+        """Initialize a new particle.
         
-        print(particles_dict)
-
-        for i in range(100):
-
-            # Initializes each particle with value in the distribution
-            p = Particle(
-                pos = [
-                    particles_dict["t1_distr"][i],
-                    particles_dict["t2_distr"][i],
-                    particles_dict["v_max_distr"][i],
-                ],
-                vel = 0,
-            )
+        Args:
+            pos: Initial position [t1, t2, v_max] or None for random initialization
+            vel: Initial velocity or None for random initialization
+            bounds: Bounds for particle parameters [(t1_min, t1_max), (t2_min, t2_max), (v_max_min, v_max_max)]
+        """
+        self.bounds = bounds or [(0.05, 0.5), (0.5, 0.95), (0.05, 2.0 * self.v_max_limit)]
+        
+        # Initialize with random values if not provided
+        if pos is None:
+            # [t1, t2, v_max]
+            t1 = np.random.uniform(self.bounds[0][0], self.bounds[0][1])
+            t2 = np.random.uniform(self.bounds[1][0], self.bounds[1][1])
+            v_max = np.random.uniform(self.bounds[2][0], self.bounds[2][1])
+            self.pos = np.array([t1, t2, v_max])
+        else:
+            self.pos = np.array(pos)
             
-            # Sets initial value to personal best
-            p.p_best = p.pos
+        if vel is None:
+            # Small random initial velocities
+            self.vel = np.random.uniform(-0.05, 0.05, 3)
+        else:
+            self.vel = np.array(vel)
             
-            # Add this particle to the cloud
-            self.particle_cloud.append(p)
-
-
-
-    def objective_function(self):
-        '''Defines the fitness function to evalute the "fitness" of each particle.'''
-
-        # Fitness is recalculated each iteration
         self.fitness = None
+        self.p_best = self.pos.copy()
+        self.p_best_fitness = None
+
+
+class PSO_TrajectoryOptimizer:
+    """Particle Swarm Optimization for trajectory parameters optimization.
+    
+    This optimizer finds the optimal parameters (t1, t2, v_max) for a trapezoidal
+    velocity profile between waypoints, considering metrics like minimum jerk,
+    minimum execution time, or a combination of both.
+    """
+    
+    def __init__(self, start_pos, final_pos, metric="min_jerk", n_particles=50, 
+                 iterations=100, a_max=10.0, v_max=5.0, ndof=5):
+        """Initialize the PSO trajectory optimizer.
+        
+        Args:
+            start_pos: Starting position/joint values
+            final_pos: Ending position/joint values
+            metric: Optimization metric ("min_jerk", "min_time", "combined")
+            n_particles: Number of particles in the swarm
+            iterations: Maximum number of iterations
+            a_max: Maximum acceleration constraint
+            v_max: Maximum velocity constraint
+            ndof: Number of degrees of freedom
+        """
+        self.start_pos = np.array(start_pos)
+        self.final_pos = np.array(final_pos)
+        self.metric = metric
+        self.n_particles = n_particles
+        self.iterations = iterations
+        self.a_max_limit = a_max
+        self.v_max_limit = v_max
+        self.ndof = ndof
+        
+        # Total Distance to Cover
+        self.distance = np.abs(self.final_pos - self.start_pos)
+        
+        # Parameter bounds for t1, t2, v_max
+        self.bounds = [(0.05, 0.5), (0.5, 0.95), (0.05, 2.0*self.v_max_limit)]
+        
+        # Particle swarm attributes
+        self.particles = []
+        
+        # PSO algorithm parameters
+        self.alpha = 0.5      # Random Disturbance Coefficient
+        self.w_min = 0.4      # Minimum inertia weight
+        self.w_max = 0.9      # Maximum inertia weight
+        self.alpha = 0.5      # Used for adaptive learning factors
+        self.beta = 0.5       # Used for adaptive learning factors  
+        
+        # Best solution found
+        self.global_best = None
+        self.global_best_fitness = None
+        
+        # Fitness history for tracking progress
+        self.fitness_history = []
+    
+    def initialize_particles(self):
+        """Initialize the particle swarm with random parameters."""
+        self.particles = []
+        for _ in range(self.n_particles):
+            particle = Particle(bounds=self.bounds)
+            particle.fitness = self.calculate_fitness(particle)
+            particle.p_best_fitness = particle.fitness
+            
+            self.particles.append(particle)
+            
+            # Update global best if needed
+            if self.global_best is None or particle.fitness > self.global_best_fitness:
+                self.global_best = particle.pos.copy()
+                self.global_best_fitness = particle.fitness
+    
+    def calculate_fitness(self, particle):
+        """
+        Fitness evaluation with soft quadratic penalties instead of -inf.
+        The function still returns 'higher is better'.
+        """
+
+        t1, t2, v_max = particle.pos
+        accel_time  = t1
+        decel_time  = 1.0 - t2
+        const_time  = t2 - t1
+
+        EPS = 1e-6
+        accel_time  = max(accel_time,  EPS)
+        decel_time  = max(decel_time,  EPS)
+
+        max_accel = v_max / accel_time
+
+        # 1. Smoothness metric (approximating jerk at transitions)
+        jerk_metric = max_accel / min(accel_time, decel_time)
+    
+        # 2. Energy metric
+        energy_metric = max_accel**2 * (accel_time + decel_time)
+        
+        # 3. Time metric (higher v_max = lower time)
+        time_metric = v_max
 
         if self.metric == "min_jerk":
-            pass
+        # Prioritize smoothness
+            weights = [0.8, 0.1, 0.2]  # [smoothness, energy, time]
+            
         elif self.metric == "min_time":
-            pass
-
-        pass
-
-    def update(self, p: Particle, iteration):
-        '''Updates each particle with the position and velocity.
+            # Prioritize speed
+            weights = [0.1, 0.1, 0.8]  # [smoothness, energy, time]
+            
+        elif self.metric == "min_energy":
+            # Prioritize energy efficiency
+            weights = [0.2, 0.7, 0.1]  # [smoothness, energy, time]
+            
+        else:  # "combined"
+            # Balanced approach
+            weights = [0.4, 0.3, 0.3]  # [smoothness, energy, time]
         
-        Parameters:
-        - X: Current positions (shape: [num_particles, dim])
-        - V: Current velocities (shape: [num_particles, dim])
-        - pb: Personal best positions (shape: [num_particles, dim])
-        - gb: Global best position (shape: [dim])
-        - w: Inertia weight (scalar)
-        - c1: Cognitive learning factor (scalar)
-        - c2: Social learning factor (scalar)
+        # Normalize and combine metrics (note negative signs for minimization objectives)
+        fitness = -(weights[0] * jerk_metric + weights[1] * energy_metric) + weights[2] * time_metric
+        
+        return fitness
 
-        Returns:
-        - X_new: Updated positions
-        - V_new: Updated velocities
-   
-        '''
-
-        r1 = np.random.rand([0.0, 1.0])  # Random numbers for cognitive component
-        r2 = np.random.rand([0.0, 1.0])  # Random numbers for social component
-        D = np.random.rand([-1.0, 1.0])
-
-        w = self.w_max - (self.w_max - self.w_min) * ((self.fitness - f_min) / (f_avg - f_min))
-
-        f_min = min(p.particle_fitness_history)
-        f_avg = sum(p.particle_fitness_history) / len(p.particle_fitness_history)
-        # Cognitive learning factors
-        c1 = self.alpha * ((self.fitness - f_min) / (f_avg - f_min)) + self.beta
-        # Social learning factors
-        c2 = self.alpha * (1 - (self.fitness - f_min) / (f_avg - f_min)) + self.beta 
-
-        old_pos = p.pos
-        old_vel = p.vel
-
-        # Calculate new veloctiy
-        p.vel =  (w * old_vel) + (c1 * r1 * (p.p_best - old_pos)) + (c2 * r2 * (self.global_best - old_pos)) + self.alpha + D
-
-        p.pos = old_pos + p.vel
     
-    def test(self):
-        print("HELLO???")
-
-    def optimization(self, verbose=True):
-        '''Runs the particle swarm optimization.'''
+    def update_particle(self, particle, iteration):
+        """Update a particle's velocity and position based on PSO equations with adaptive parameters.
         
+        Args:
+            particle: The particle to update
+            iteration: Current iteration number
+        """
+        # Calculate fitness statistics for adaptive parameters
+        if len(self.fitness_history) > 0:
+            f_min = min([p.fitness for p in self.particles if p.fitness is not None])
+            f_sum = sum([p.fitness for p in self.particles if p.fitness is not None])
+            f_count = sum([1 for p in self.particles if p.fitness is not None])
+            f_avg = f_sum / f_count if f_count > 0 else 0
+        else:
+            f_min = 0
+            f_avg = 0
+        
+        # Calculate adaptive inertia weight based on fitness
+        if f_avg != f_min:
+            w = self.w_max - (self.w_max - self.w_min) * ((particle.fitness - f_min) / (f_avg - f_min))
+        else:
+            w = self.w_max
+        
+        # Calculate adaptive learning factors
+        if f_avg != f_min:
+            # Cognitive learning factor (personal best)
+            c1 = self.alpha * ((particle.fitness - f_min) / (f_avg - f_min)) + self.beta
+            # Social learning factor (global best)
+            c2 = self.alpha * (1 - (particle.fitness - f_min) / (f_avg - f_min)) + self.beta
+        else:
+            c1 = self.alpha + self.beta
+            c2 = self.alpha + self.beta
+        
+        # Generate random coefficients
+        r1 = np.random.random(3)  # Cognitive component random factor
+        r2 = np.random.random(3)  # Social component random factor
+        D = np.random.uniform(-1.0, 1.0, 3)  # Random disturbance
+        
+        # Save old values
+        old_pos = particle.pos
+        old_vel = particle.vel
+        
+        # Calculate new velocity using adaptive PSO equation with random disturbance
+        cognitive_component = c1 * r1 * (particle.p_best - old_pos)
+        social_component = c2 * r2 * (self.global_best - old_pos)
+        random_disturbance = self.alpha * D
+        
+        particle.vel = w * old_vel + cognitive_component + social_component + random_disturbance
+        
+        # Limit velocity to prevent too large steps
+        particle.vel = np.clip(particle.vel, -0.1, 0.1)
+        
+        # Update position
+        particle.pos = old_pos + particle.vel
+        
+        # Apply constraints on position
+        # Ensure t1 and t2 are in proper order (t1 < t2 < 1.0)
+        particle.pos[0] = np.clip(particle.pos[0], self.bounds[0][0], self.bounds[0][1])  # t1
+        min_t2 = particle.pos[0] + 0.2  # Ensure at least 20% of trajectory is constant velocity
+        particle.pos[1] = np.clip(particle.pos[1], max(particle.pos[0] + 0.1, self.bounds[1][0]), self.bounds[1][1])  # t2
+        particle.pos[2] = np.clip(particle.pos[2], self.bounds[2][0], self.bounds[2][1])  # v_max
+        
+    def optimize(self, verbose=True):
+        """Run the PSO optimization process.
+        
+        Args:
+            verbose: Whether to print progress updates
+            
+        Returns:
+            tuple: (best_params, fitness_history)
+        """
         # Initialize particles
-        self.initialize_particle_cloud()
-        print(f"PARTICLE CLOUD LSIT IS INITIALIZED TO {len(self.particle_cloud)}")
-
-        # Optimization Loop
+        self.initialize_particles()
+        
+        # Main optimization loop
         for i in range(self.iterations):
-            for p in self.particle_cloud:
-                self.objective_function()
-
-                # update particle individual optimal solution
-                # when the fitness exceeds indv optimal solution, update pos and velocity
-                if self.fitness > p.p_best:
-                    p.p_best = self.fitness
-
-                if p.p_best > self.global_best:
-                    self.global_best = p.p_best
-
-                # Update each particle's position, velocity, personal best
-                self.update(p, i)
-
-                p.particle_fitness_history.apped(self.fitness)
-
-            # Add global best of eahc iteration
-            self.fitness_history.append(self.global_best)
-
-            ##################################
-            # Print progress every 10 iterations
-            if verbose and i % 10 == 0:
-                print(f"Iteration {i}: Best Fitness = {self.global_best}")
-                print(f"Best Parameters: t1={self.global_best[0]:.3f}, t2={self.global_best[1]:.3f}, v_max={self.global_best[2]:.3f}")
+            # Update each particle
+            for particle in self.particles:
+                # Update particle's position and velocity
+                self.update_particle(particle, i)
+                
+                # Calculate new fitness
+                particle.fitness = self.calculate_fitness(particle)
+                
+                # Update personal best
+                if particle.fitness > particle.p_best_fitness:
+                    particle.p_best = particle.pos.copy()
+                    particle.p_best_fitness = particle.fitness
+                    
+                    # Update global best if needed
+                    if particle.fitness > self.global_best_fitness:
+                        self.global_best = particle.pos.copy()
+                        self.global_best_fitness = particle.fitness
+            
+            # Record best fitness of this iteration
+            self.fitness_history.append(self.global_best_fitness)
+            
         
         # Print final results
         if verbose:
             print("\nOptimization Complete!")
             print(f"Best Parameters: t1={self.global_best[0]:.3f}, t2={self.global_best[1]:.3f}, v_max={self.global_best[2]:.3f}")
-            print(f"Best Fitness: {self.global_best}")
+            print(f"Best Fitness: {self.global_best_fitness}")
         
         return self.global_best, self.fitness_history
-
+    
+        
+    def plot_fitness_history(self):
+        """Plot the fitness history during optimization."""
+        plt.figure(figsize=(10, 6))
+        plt.plot(self.fitness_history)
+        plt.title('Fitness History')
+        plt.xlabel('Iteration')
+        plt.ylabel('Fitness Value')
+        plt.grid(True)
+        plt.show()
+    
     def get_optimized_parameters(self):
         """Return the optimized trajectory parameters.
         
@@ -216,39 +289,22 @@ class TrajectoryOptimizer():
             't2': t2,
             'v_max': v_max
         }
-
-
-    # def visualizer(self):#, EE: EndEffector):
-    #     """Plotting the particles and end effector pose"""
-    #     x_vals = [p.pos[0] for p in self.particle_cloud]
-    #     y_vals = [p.pos[1] for p in self.particle_cloud]
-    #     z_vals = [p.pos[2] for p in self.particle_cloud]
-
-    #     fig = plt.figure()
-    #     ax = fig.add_subplot(projection='3d')
-
-    #     ax.scatter(x_vals, y_vals, z_vals, c='blue', s=20, label='Particles')
-    #     ax.scatter(0.5, 0.5, 0.5, c='red', s=100, marker='*', label='End Effector Pose')
-
-
-    #     plt.title("Gaussian Particle Distribution around End-Effector Pose")
-    #     plt.xlabel("X")
-    #     plt.ylabel("Y")
-    #     plt.axis("equal")
-    #     plt.grid(True)
-    #     plt.legend()
-    #     plt.show()
-
-
-
-if __name__ == "__main__":
-    start_joint = [0, 0, 0, 0, 0]
-    end_joint = [30, 45, -15, 20, 10]
     
-    # Create and run optimizer
-    optimizer = TrajectoryOptimizer(
-        metric="min_jerk"
-    )
-
-    
-    print("Trajectory generated successfully!")
+    def create_trajectory_config(self):
+        """Create a configuration dictionary for the trajectory generator.
+        
+        Returns:
+            dict: Configuration for the MultiAxisTrajectoryGenerator
+        """
+        if self.global_best is None:
+            raise ValueError("Must run optimize() before creating configuration")
+            
+        return {
+            'method': 'trapezoid',
+            'mode': 'joint' if self.ndof > 3 else 'task',
+            'interval': [0, 1],
+            'ndof': self.ndof,
+            'start_pos': self.start_pos,
+            'final_pos': self.final_pos,
+            'optimization_params': self.get_optimized_parameters()
+        }
