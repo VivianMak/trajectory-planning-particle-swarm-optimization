@@ -22,7 +22,7 @@ class Particle:
             vel: Initial velocity or None for random initialization
             bounds: Bounds for particle parameters [(t1_min, t1_max), (t2_min, t2_max), (v_max_min, v_max_max)]
         """
-        self.bounds = bounds or [(0.1, 0.4), (0.6, 0.9), (0.1, 2.0)]
+        self.bounds = bounds or [(0.05, 0.5), (0.5, 0.95), (0.05, 2.0 * self.v_max_limit)]
         
         # Initialize with random values if not provided
         if pos is None:
@@ -80,7 +80,7 @@ class PSO_TrajectoryOptimizer:
         self.distance = np.abs(self.final_pos - self.start_pos)
         
         # Parameter bounds for t1, t2, v_max
-        self.bounds = [(0.1, 0.4), (0.6, 0.9), (0.1, self.v_max_limit)]
+        self.bounds = [(0.05, 0.5), (0.5, 0.95), (0.05, 2.0*self.v_max_limit)]
         
         # Particle swarm attributes
         self.particles = []
@@ -129,21 +129,37 @@ class PSO_TrajectoryOptimizer:
         accel_time  = max(accel_time,  EPS)
         decel_time  = max(decel_time,  EPS)
 
+        max_accel = v_max / accel_time
 
-        max_accel   = v_max / accel_time
+        # 1. Smoothness metric (approximating jerk at transitions)
         jerk_metric = max_accel / min(accel_time, decel_time)
+    
+        # 2. Energy metric
+        energy_metric = max_accel**2 * (accel_time + decel_time)
+        
+        # 3. Time metric (higher v_max = lower time)
+        time_metric = v_max
 
         if self.metric == "min_jerk":
-            base_fitness = -jerk_metric              # larger is better (less jerk)
+        # Prioritize smoothness
+            weights = [0.8, 0.2]  # [smoothness, energy, time]
+            
         elif self.metric == "min_time":
-            base_fitness =  v_max                    # reward higher speed
-        else:
-            w_jerk, w_time = 0.7, 0.3                # weights for combined metric
-            base_fitness = -(w_jerk*jerk_metric - w_time*v_max)
-
-
-
-        return base_fitness #- penalty
+            # Prioritize speed
+            weights = [0.1, 0.1, 0.8]  # [smoothness, energy, time]
+            
+        elif self.metric == "min_energy":
+            # Prioritize energy efficiency
+            weights = [0.2, 0.7, 0.1]  # [smoothness, energy, time]
+            
+        else:  # "combined"
+            # Balanced approach
+            weights = [0.4, 0.3, 0.3]  # [smoothness, energy, time]
+        
+        # Normalize and combine metrics (note negative signs for minimization objectives)
+        fitness = -(weights[0] * jerk_metric + weights[1] * energy_metric) + weights[2] * time_metric
+        
+        return fitness
 
     
     def update_particle(self, particle, iteration):
@@ -204,6 +220,7 @@ class PSO_TrajectoryOptimizer:
         # Apply constraints on position
         # Ensure t1 and t2 are in proper order (t1 < t2 < 1.0)
         particle.pos[0] = np.clip(particle.pos[0], self.bounds[0][0], self.bounds[0][1])  # t1
+        min_t2 = particle.pos[0] + 0.2  # Ensure at least 20% of trajectory is constant velocity
         particle.pos[1] = np.clip(particle.pos[1], max(particle.pos[0] + 0.1, self.bounds[1][0]), self.bounds[1][1])  # t2
         particle.pos[2] = np.clip(particle.pos[2], self.bounds[2][0], self.bounds[2][1])  # v_max
         
@@ -242,10 +259,6 @@ class PSO_TrajectoryOptimizer:
             # Record best fitness of this iteration
             self.fitness_history.append(self.global_best_fitness)
             
-            # Print progress every 10 iterations
-            if verbose and i % 10 == 0:
-                print(f"Iteration {i}: Best Fitness = {self.global_best_fitness}")
-                print(f"Best Parameters: t1={self.global_best[0]:.3f}, t2={self.global_best[1]:.3f}, v_max={self.global_best[2]:.3f}")
         
         # Print final results
         if verbose:
