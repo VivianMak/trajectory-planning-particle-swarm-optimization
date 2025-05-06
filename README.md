@@ -11,7 +11,9 @@ The first paper focuses on enhancing the motion stability and efficiency of indu
 The second paper presents a time-optimal trajectory planning method for a dulcimer music robot using an improved Particle Swarm Optimization (PSO) algorithm. The goal is to enable fast and stable striking motions essential for playing the dulcimer by minimizing the total trajectory execution time while adhering to all kinematic constraints, including joint angles, velocities, and accelerations. The authors develop a kinematic model of the robot using the Denavit-Hartenberg (D-H) method and apply fifth-order polynomial interpolation for trajectory planning. The improved PSO algorithm is tailored to handle the full set of constraints, and simulations show that it significantly reduces trajectory time—by 74.35 percent—while maintaining smooth and continuous motion profiles, validating the algorithm's effectiveness.
 
 ## Results
-To read more about the project and results, check out our writeup: [ADD LiNK]
+To read more about the project and results, check out our writeup and demo: 
+- [Report](PSO_Trajectory_Optimization.pdf)
+- [Demo Video](https://drive.google.com/file/d/1YdwvggKLrmf1WGced5zTqtRC5swXWiTm/view?resourcekey)
 
 ## Running the Simulator
 ### How to Run
