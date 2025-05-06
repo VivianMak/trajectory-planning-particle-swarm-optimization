@@ -2,8 +2,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import tkinter as tk
 from tkinter import ttk, messagebox
-import time
 from helper_fcns.utils import EndEffector
+from particles import PSO_TrajectoryOptimizer
+from modules.trajectory_generator import MultiAxisTrajectoryGenerator
 
 def add_pso_trajectory_optimization(visualizer):
     """
@@ -13,8 +14,6 @@ def add_pso_trajectory_optimization(visualizer):
     Args:
         visualizer: Instance of the Visualizer class to add PSO functionality to
     """
-    from particles_test import PSO_TrajectoryOptimizer
-    from modules.trajectory_generator import MultiAxisTrajectoryGenerator
     
     visualizer.PSO_TrajectoryOptimizer = PSO_TrajectoryOptimizer
     visualizer.MultiAxisTrajectoryGenerator = MultiAxisTrajectoryGenerator
