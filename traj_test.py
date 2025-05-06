@@ -1,8 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from simulator.modules.trajectory_generator import MultiAxisTrajectoryGenerator
-from particles_test import PSO_TrajectoryOptimizer, add_pso_trajectory_optimization
-from simulator.main_arm import Visualizer
+from modules.trajectory_generator import MultiAxisTrajectoryGenerator
+from particles_test import PSO_TrajectoryOptimizer
+from main_arm import Visualizer
 import tkinter as tk
 import sys
 

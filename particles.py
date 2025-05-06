@@ -241,9 +241,13 @@ class TrajectoryOptimizer():
 
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 >>>>>>> ade2681 (worked on vivian_test branch)
+=======
+
+>>>>>>> 4581370 (Add pso_integration)
 if __name__ == "__main__":
     start_joint = [0, 0, 0, 0, 0]
     end_joint = [30, 45, -15, 20, 10]

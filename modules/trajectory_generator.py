@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+<<<<<<< HEAD
 from simulator.modules.trajectory_generator import MultiAxisTrajectoryGenerator
 from particles import TrajectoryOptimizer #add_pso_trajectory_optimization
 from simulator.main_arm import Visualizer
@@ -17,6 +18,17 @@ def main():
     optimizer.test()
     
 <<<<<<< HEAD:modules/trajectory_generator.py
+=======
+
+
+class MultiAxisTrajectoryGenerator():
+    """
+    Multi-axis trajectory generator for joint or task space trajectories.
+
+    Supports linear, cubic, quintic polynomial, and trapezoidal velocity profiles.
+    """
+    
+>>>>>>> 4581370 (Add pso_integration)
     def __init__(self, method="trapezoid",
                  mode="joint",
                  interval=[0,1],
@@ -81,6 +93,7 @@ def main():
         if hasattr(self, 'm') and hasattr(self.m, 'reset_parameters'):
             self.m.reset_parameters()
 
+<<<<<<< HEAD
 =======
     # Define start and end joint positions
     start_joint = [0, 0, 0, 0, 0]
@@ -137,6 +150,58 @@ def main():
         plt.show()
         
 <<<<<<< HEAD:modules/trajectory_generator.py
+=======
+    
+    def generate(self, nsteps=100):
+        """
+        Generate the trajectory at discrete time steps.
+
+        Args:
+            nsteps (int): Number of time steps.
+        Returns:
+            list: List of position, velocity, acceleration for each DOF.
+        """
+        self.t = np.linspace(0, self.T, nsteps)
+        return self.m.generate(nsteps=nsteps)
+
+
+    def plot(self):
+        """
+        Plot the position, velocity, and acceleration trajectories.
+        """
+        self.fig = plt.figure()
+        self.sub1 = self.fig.add_subplot(3,1,1)  # Position plot
+        self.sub2 = self.fig.add_subplot(3,1,2)  # Velocity plot
+        self.sub3 = self.fig.add_subplot(3,1,3)  # Acceleration plot
+
+        self.fig.set_size_inches(8, 10)    
+        self.fig.suptitle(self.mode + " Trajectory Generator", fontsize=16)
+
+        colors = ['r', 'g', 'b', 'm', 'y']
+
+        for i in range(self.ndof):
+            # position plot
+            self.sub1.plot(self.t, self.m.X[i][0], colors[i]+'o-', label=self.labels[i])
+            self.sub1.set_ylabel('position', fontsize=15)
+            self.sub1.grid(True)
+            self.sub1.legend()
+        
+            # velocity plot
+            self.sub2.plot(self.t, self.m.X[i][1], colors[i]+'o-', label=self.labels[i])
+            self.sub2.set_ylabel('velocity', fontsize=15)
+            self.sub2.grid(True)
+            self.sub2.legend()
+
+            # acceleration plot
+            self.sub3.plot(self.t, self.m.X[i][2], colors[i]+'o-', label=self.labels[i])
+            self.sub3.set_ylabel('acceleration', fontsize=15)
+            self.sub3.set_xlabel('Time (secs)', fontsize=18)
+            self.sub3.grid(True)
+            self.sub3.legend()
+
+        plt.show()
+        
+>>>>>>> 4581370 (Add pso_integration)
 
 
 class LinearInterp():
@@ -281,13 +346,20 @@ class QuinticPolynomial():
 class TrapezoidVelocity():
     """
     Trapezoidal velocity profile generator for constant acceleration/deceleration phases.
+<<<<<<< HEAD
     """
 
+=======
+    Generates position (q), velocity (qd), and acceleration (qdd) over time.
+    Kinematics: uses basic equations s = s0 + v0*t + 0.5*a*t^2 and v = v0 + a*t.
+    """
+>>>>>>> 4581370 (Add pso_integration)
     def __init__(self, trajgen):
         self._copy_params(trajgen)
         self.solve()
 
     def _copy_params(self, trajgen):
+<<<<<<< HEAD
         self.start_pos = trajgen.start_pos
         self.start_vel = trajgen.start_vel
         self.start_acc = trajgen.start_acc
@@ -303,6 +375,24 @@ class TrapezoidVelocity():
 <<<<<<< HEAD:simulator/modules/trajectory_generator.py
         t0, tf = 0, self.T
 =======
+=======
+        """
+        Copy initial and final conditions from an external trajectory generator object.
+        """
+        self.start_pos = trajgen.start_pos     # start positions for each DOF
+        self.start_vel = trajgen.start_vel     # start velocities for each DOF
+        self.final_pos = trajgen.final_pos     # target positions for each DOF
+        self.final_vel = trajgen.final_vel     # desired end velocities (often zero)
+        self.T = trajgen.T                     # total motion duration
+        self.ndof = trajgen.ndof               # number of degrees of freedom
+        self.X = [None] * self.ndof            # placeholder for computed profiles
+        # Fraction of total time allocated to accel/decel
+        self.accel_time_ratio = 0.2            # 20% of T to accelerate
+        self.decel_time_ratio = 0.2            # 20% of T to decelerate
+        self.params = [None] * self.ndof       # store kinematic parameters
+
+    def solve(self):
+>>>>>>> 4581370 (Add pso_integration)
         """
         Compute parameters for each DOF:
         - t_accel: duration of acceleration phase
@@ -360,6 +450,7 @@ class TrapezoidVelocity():
                     't_cruise': t_accel + t_cruise,       # end of cruise phase
                     't_decel': self.T                     # end of decel phase (total)
                 }
+<<<<<<< HEAD
 >>>>>>> 4581370 (Add pso_integration):modules/trajectory_generator.py
 
     
@@ -378,6 +469,10 @@ class TrapezoidVelocity():
             self.X[i] = [q, qd, qdd]
         return self.X
 =======
+=======
+
+    def generate(self, nsteps=100):
+>>>>>>> 4581370 (Add pso_integration)
             """
             Sample trajectory at nsteps between t=0 and t=T.
             Returns list per DOF: [positions, velocities, accelerations].
@@ -448,8 +543,12 @@ class TrapezoidVelocity():
         if hasattr(self, 'optimization_params'):
             self.optimization_params = None
         # Re-solve with default parameters
+<<<<<<< HEAD
         self.solve()
 >>>>>>> 4581370 (Add pso_integration):modules/trajectory_generator.py
 =======
         print(f"Trajectory with '{metric}' metric generated successfully!")
 >>>>>>> ade2681 (worked on vivian_test branch):trajectory.py
+=======
+        self.solve()
+>>>>>>> 4581370 (Add pso_integration)

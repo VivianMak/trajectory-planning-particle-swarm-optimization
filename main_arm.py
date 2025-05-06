@@ -3,10 +3,10 @@ import numpy as np
 import tkinter as tk
 from tkinter import ttk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from simulator.modules.arm_models import Robot
+from modules.arm_models import Robot
 import math
-from simulator.helper_fcns.utils import wraptopi, EndEffector
-from simulator.modules.trajectory_generator import MultiAxisTrajectoryGenerator
+from helper_fcns.utils import wraptopi, EndEffector
+from modules.trajectory_generator import MultiAxisTrajectoryGenerator
 import time
 from pynput import keyboard
 import yaml
