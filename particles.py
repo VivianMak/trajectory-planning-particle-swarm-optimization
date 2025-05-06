@@ -4,7 +4,7 @@ from typing import List
 
 import matplotlib.pyplot as plt
 
-from mp_code.helper_fcns.utils import EndEffector, rotm_to_euler
+from helper_fcns.utils import EndEffector, rotm_to_euler
 
 
 class Particle():
@@ -206,12 +206,48 @@ class TrajectoryOptimizer():
                 probabilities: the probability of selecting each element in choices represented as a list
                 n: the number of samples
         """
-        values = np.array(range(len(choices)))
-        probs = np.array(probabilities)
-        bins = np.add.accumulate(probs)
-        inds = values[np.digitize(random_sample(n), bins)]
-        samples = []
-        for i in inds:
-            samples.append(deepcopy(choices[int(i)]))
-        return samples
-    '''
+        if self.global_best is None:
+            raise ValueError("Must run optimize() before getting parameters")
+            
+        t1, t2, v_max = self.global_best
+        return {
+            't1': t1,
+            't2': t2,
+            'v_max': v_max
+        }
+
+
+    # def visualizer(self):#, EE: EndEffector):
+    #     """Plotting the particles and end effector pose"""
+    #     x_vals = [p.pos[0] for p in self.particle_cloud]
+    #     y_vals = [p.pos[1] for p in self.particle_cloud]
+    #     z_vals = [p.pos[2] for p in self.particle_cloud]
+
+    #     fig = plt.figure()
+    #     ax = fig.add_subplot(projection='3d')
+
+    #     ax.scatter(x_vals, y_vals, z_vals, c='blue', s=20, label='Particles')
+    #     ax.scatter(0.5, 0.5, 0.5, c='red', s=100, marker='*', label='End Effector Pose')
+
+
+    #     plt.title("Gaussian Particle Distribution around End-Effector Pose")
+    #     plt.xlabel("X")
+    #     plt.ylabel("Y")
+    #     plt.axis("equal")
+    #     plt.grid(True)
+    #     plt.legend()
+    #     plt.show()
+
+
+
+if __name__ == "__main__":
+    start_joint = [0, 0, 0, 0, 0]
+    end_joint = [30, 45, -15, 20, 10]
+    
+    # Create and run optimizer
+    optimizer = TrajectoryOptimizer(
+        metric="min_jerk"
+    )
+
+    
+    print("Trajectory generated successfully!")

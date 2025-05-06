@@ -319,7 +319,7 @@ class Visualizer:
         q0 = waypoints[0]
         qf = waypoints[1]
 
-        traj = MultiAxisTrajectoryGenerator(method="cubic", mode="task", interval=[0, 1], ndof=len(q0), start_pos=q0, final_pos=qf)
+        traj = MultiAxisTrajectoryGenerator(method="trapezoid", mode="task", interval=[0, 1], ndof=len(q0), start_pos=q0, final_pos=qf)
         traj_dofs = traj.generate(nsteps=50)
 
         for i in range(50):
@@ -347,7 +347,7 @@ class Visualizer:
         q0 = np.rad2deg(self.robot.solve_inverse_kinematics(EE_0))
         qf = np.rad2deg(self.robot.solve_inverse_kinematics(EE_f))
 
-        traj = MultiAxisTrajectoryGenerator(method="cubic", mode="joint", interval=[0, 1], ndof=len(q0), start_pos=q0, final_pos=qf)
+        traj = MultiAxisTrajectoryGenerator(method="trapezoid", mode="joint", interval=[0, 1], ndof=len(q0), start_pos=q0, final_pos=qf)
 
         traj_dofs = traj.generate(nsteps=50)
 
@@ -412,9 +412,7 @@ class Visualizer:
                 self.v[2] = 0
             elif key.char == 's':
                 self.v[2] = 0
-
-
-
+    
 
 
 def get_robot_type(robot_type: str) -> str:
@@ -468,7 +466,16 @@ def main():
     # Create the Tkinter root window and run the visualizer application
     root = tk.Tk()
     app = Visualizer(root, args)
-    # app.update_waypoints()
+    
+    # Add PSO functionality after Visualizer is fully initialized
+    try:
+        from pso_integration import add_pso_trajectory_optimization
+        add_pso_trajectory_optimization(app)
+        print("PSO Trajectory Optimization functionality added successfully.")
+    except ImportError as e:
+        print(f"Could not load PSO Trajectory Optimization: {e}")
+    
+    # Run the main loop
     root.mainloop()
 
 

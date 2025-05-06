@@ -9,7 +9,7 @@ class MultiAxisTrajectoryGenerator():
     Supports linear, cubic, quintic polynomial, and trapezoidal velocity profiles.
     """
     
-    def __init__(self, method="quintic",
+    def __init__(self, method="trapezoid",
                  mode="joint",
                  interval=[0,1],
                  ndof=1,
@@ -65,6 +65,13 @@ class MultiAxisTrajectoryGenerator():
             self.m = QuinticPolynomial(self)
         elif method == "trapezoid":
             self.m = TrapezoidVelocity(self)
+    
+    def reset_optimization_params(self):
+        """Reset any optimization parameters"""
+        if hasattr(self, 'optimization_params'):
+            self.optimization_params = None
+        if hasattr(self, 'm') and hasattr(self.m, 'reset_parameters'):
+            self.m.reset_parameters()
 
     
     def generate(self, nsteps=100):
@@ -279,11 +286,72 @@ class TrapezoidVelocity():
 
 
     def solve(self):
+<<<<<<< HEAD:simulator/modules/trajectory_generator.py
         t0, tf = 0, self.T
+=======
+        """
+        Compute parameters for each DOF:
+        - t_accel: duration of acceleration phase
+        - t_cruise: duration of constant-speed cruise phase
+        - t_decel: end time of deceleration (equal to total T)
+        - v_cruise: constant cruise speed to satisfy boundary conditions
+        - accel/decel magnitudes based on v_cruise
+        """
+        if hasattr(self, 'optimization_params') and self.optimization_params is not None:
+            print("In solve(): Using optimization params:", self.optimization_params)
+            # Use optimized parameters
+            for i in range(self.ndof):
+                p = self.optimization_params
+                t_accel = p['t1'] * self.T
+                t_decel = p['t2'] * self.T
+                t_cruise = self.T - t_accel - t_decel
+                
+                v_cruise = p['v_max']
+                accel = v_cruise / t_accel if t_accel > 0 else 0
+                decel = -v_cruise / t_decel if t_decel > 0 else 0
+                
+                self.params[i] = {
+                    'accel': accel,
+                    'decel': decel,
+                    'v_cruise': v_cruise,
+                    't_accel': t_accel,
+                    't_cruise': t_accel + t_cruise,
+                    't_decel': self.T
+                }
+        else:
+            print("In solve(): Using default ratios:", self.accel_time_ratio, self.decel_time_ratio)
+            for i in range(self.ndof):
+                # Phase durations
+                t_accel = self.T * self.accel_time_ratio   # time accelerating
+                t_decel = self.T * self.decel_time_ratio   # time decelerating
+                t_cruise = self.T - t_accel - t_decel      # time at constant speed
+
+                # Displacement to cover
+                total_distance = self.final_pos[i] - self.start_pos[i]
+
+                # Solve for cruise velocity using area under velocity-time graph:
+                # distance = v_cruise*t_cruise + 0.5*v_cruise*t_accel + 0.5*v_cruise*t_decel
+                v_cruise = total_distance / (t_cruise + 0.5*t_accel + 0.5*t_decel)
+
+                # Constant acceleration: a = v_cruise / t_accel
+                accel = v_cruise / t_accel
+                # Constant deceleration: decel = -v_cruise / t_decel
+                decel = -v_cruise / t_decel
+
+                self.params[i] = {
+                    'accel': accel,
+                    'decel': decel,
+                    'v_cruise': v_cruise,
+                    't_accel': t_accel,                   # end of accel phase
+                    't_cruise': t_accel + t_cruise,       # end of cruise phase
+                    't_decel': self.T                     # end of decel phase (total)
+                }
+>>>>>>> 4581370 (Add pso_integration):modules/trajectory_generator.py
 
     
     
     def generate(self, nsteps=100):
+<<<<<<< HEAD:simulator/modules/trajectory_generator.py
         self.t = np.linspace(0, self.T, nsteps)
 
         for i in range(self.ndof): # iterate through all DOFs
@@ -295,3 +363,76 @@ class TrapezoidVelocity():
                 qdd.append()  
             self.X[i] = [q, qd, qdd]
         return self.X
+=======
+            """
+            Sample trajectory at nsteps between t=0 and t=T.
+            Returns list per DOF: [positions, velocities, accelerations].
+            """
+            print("\nGenerating trajectory:")
+            if hasattr(self, 'optimization_params') and self.optimization_params is not None:
+                    print("Using optimization params:", self.optimization_params)
+            else:
+                    print("Using default ratios:", self.accel_time_ratio, self.decel_time_ratio)
+            self.solve()
+            print("Resulting parameters for joint 1:")
+            print("t_accel:", self.params[0]['t_accel'], "v_cruise:", self.params[0]['v_cruise'])
+            
+            self.t = np.linspace(0, self.T, nsteps)
+
+            for i in range(self.ndof):
+                p = self.params[i]
+                t_accel = p['t_accel']
+                t_cruise = p['t_cruise']
+
+                # Precompute end-of-acceleration and end-of-cruise positions
+                q_accel_end = (
+                    self.start_pos[i]
+                    + self.start_vel[i]*t_accel
+                    + 0.5*p['accel']*t_accel**2
+                )
+                cruise_duration = t_cruise - t_accel
+                q_cruise_end = q_accel_end + p['v_cruise']*cruise_duration
+
+                q, qd, qdd = [], [], []
+                for t in self.t:
+                    # Phase 1: Acceleration
+                    if t < t_accel:
+                        pos = (
+                            self.start_pos[i]
+                            + self.start_vel[i]*t
+                            + 0.5*p['accel']*t**2
+                        )
+                        vel = self.start_vel[i] + p['accel']*t
+                        acc = p['accel']
+
+                    # Phase 2: Cruise (constant velocity)
+                    elif t < t_cruise:
+                        t_since_accel = t - t_accel
+                        pos = q_accel_end + p['v_cruise']*t_since_accel
+                        vel = p['v_cruise']
+                        acc = 0
+
+                    # Phase 3: Deceleration
+                    else:
+                        t_since_decel = t - t_cruise
+                        pos = (
+                            q_cruise_end
+                            + p['v_cruise']*t_since_decel
+                            + 0.5*p['decel']*t_since_decel**2
+                        )
+                        vel = p['v_cruise'] + p['decel']*t_since_decel
+                        acc = p['decel']
+
+                    q.append(pos)
+                    qd.append(vel)
+                    qdd.append(acc)
+
+                self.X[i] = [q, qd, qdd]
+            return self.X
+    def reset_parameters(self):
+        """Reset any optimization parameters to use default values"""
+        if hasattr(self, 'optimization_params'):
+            self.optimization_params = None
+        # Re-solve with default parameters
+        self.solve()
+>>>>>>> 4581370 (Add pso_integration):modules/trajectory_generator.py
