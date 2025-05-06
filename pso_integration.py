@@ -30,7 +30,7 @@ def add_pso_trajectory_optimization(visualizer):
     
     visualizer.metric_var = tk.StringVar(value="min_jerk")
     visualizer.metric_combo = ttk.Combobox(visualizer.control_frame, textvariable=visualizer.metric_var, 
-                                    values=["min_jerk", "min_time", "combined"])
+                                    values=["min_jerk", "min_time", "min_energy", "combined"])
     visualizer.metric_combo.grid(column=1, row=row_number)
     row_number += 1
     
@@ -122,7 +122,7 @@ def run_pso_optimization(visualizer):
         traj = visualizer.MultiAxisTrajectoryGenerator(
             method="trapezoid",
             mode="joint",
-            interval=[0, 1],
+            interval=[0, 10],
             ndof=len(start_joint),
             start_pos=start_joint,
             final_pos=end_joint
@@ -173,6 +173,7 @@ def execute_trajectory(visualizer, traj_data, time_per_step=0.05):
 def compare_with_default(visualizer):
     """
     Compares the PSO-optimized trajectory with the default trajectory using normalized plots.
+    Creates a timestamped subdirectory for each run under 'trajectory_plots' directory.
     """
     # First make sure we have waypoints to work with
     if not hasattr(visualizer.robot, 'waypoint_x') or len(visualizer.robot.waypoint_x) < 2:
@@ -213,7 +214,7 @@ def compare_with_default(visualizer):
         default_traj = visualizer.MultiAxisTrajectoryGenerator(
             method="trapezoid",
             mode="joint",
-            interval=[0, 1],
+            interval=[0, 10],
             ndof=len(start_joint),
             start_pos=start_joint,
             final_pos=end_joint
@@ -248,7 +249,7 @@ def compare_with_default(visualizer):
         traj = visualizer.MultiAxisTrajectoryGenerator(
             method="trapezoid",
             mode="joint",
-            interval=[0, 1],
+            interval=[0, 10],
             ndof=len(start_joint),
             start_pos=start_joint,
             final_pos=end_joint
@@ -265,6 +266,31 @@ def compare_with_default(visualizer):
         # Close progress window
         progress_window.destroy()
         
+        # Create directory structure for saving plots
+        import os
+        import datetime
+        
+        # Create base directory if it doesn't exist
+        base_plots_dir = "trajectory_plots"
+        os.makedirs(base_plots_dir, exist_ok=True)
+        
+        # Create a unique timestamp for this run
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        
+        # Create a subdirectory for this specific run
+        run_dir_name = f"{metric}_{timestamp}"
+        run_dir = os.path.join(base_plots_dir, run_dir_name)
+        os.makedirs(run_dir, exist_ok=True)
+        
+        # Save run metadata to a text file
+        with open(os.path.join(run_dir, "run_info.txt"), 'w') as f:
+            f.write(f"Optimization run: {timestamp}\n")
+            f.write(f"Metric: {metric}\n")
+            f.write(f"Number of particles: {n_particles}\n")
+            f.write(f"Number of iterations: {iterations}\n")
+            f.write(f"Optimized parameters: t1={params['t1']:.3f}, t2={params['t2']:.3f}, v_max={params['v_max']:.3f}\n")
+            f.write(f"Waypoints: Start={waypoints[0]}, End={waypoints[1]}\n")
+        
         # Normalization function
         def normalize_data(data):
             data_min = min(data)
@@ -273,10 +299,10 @@ def compare_with_default(visualizer):
                 return [0.5] * len(data)  # Handle constant data
             return [(x - data_min) / (data_max - data_min) for x in data]
         
-        # Compare trajectories (position, velocity, acceleration)
+        # Time array for plotting
         time = np.linspace(0, 1, 100)
         
-        # Create figure to compare
+        # Show only Joint 1 in GUI (as before)
         fig, axs = plt.subplots(3, 1, figsize=(12, 15))
         
         # Position comparison (first joint) - NORMALIZED
@@ -320,7 +346,122 @@ def compare_with_default(visualizer):
                  ha='center', fontsize=10)
         
         plt.tight_layout(rect=[0, 0.03, 1, 1])  # Adjust layout to make room for the text
-        plt.show()
+        
+        # Save the main displayed plot
+        main_plot_file = os.path.join(run_dir, "joint1_main_display.png")
+        fig.savefig(main_plot_file)
+        plt.show()  # Still show Joint 1 plot interactively
+        
+        # Generate and save plots for ALL joints
+        for joint_idx in range(len(start_joint)):
+            # Create a figure for this joint
+            joint_fig, joint_axs = plt.subplots(3, 1, figsize=(12, 15))
+            joint_fig.suptitle(f'Joint {joint_idx+1} Trajectory Comparison', fontsize=16)
+            
+            # Position comparison
+            default_pos_norm = normalize_data(default_data[joint_idx][0])
+            optimized_pos_norm = normalize_data(optimized_data[joint_idx][0])
+            
+            joint_axs[0].plot(time, default_pos_norm, 'r--', label='Default Position (Normalized)')
+            joint_axs[0].plot(time, optimized_pos_norm, 'b-', label='Optimized Position (Normalized)')
+            joint_axs[0].set_title(f'Normalized Position Comparison (Joint {joint_idx+1})')
+            joint_axs[0].set_ylabel('Position (Normalized)')
+            joint_axs[0].grid(True)
+            joint_axs[0].legend()
+            
+            # Velocity comparison
+            default_vel_norm = normalize_data(default_data[joint_idx][1])
+            optimized_vel_norm = normalize_data(optimized_data[joint_idx][1])
+            
+            joint_axs[1].plot(time, default_vel_norm, 'r--', label='Default Velocity (Normalized)')
+            joint_axs[1].plot(time, optimized_vel_norm, 'b-', label='Optimized Velocity (Normalized)')
+            joint_axs[1].set_title(f'Normalized Velocity Comparison (Joint {joint_idx+1})')
+            joint_axs[1].set_ylabel('Velocity (Normalized)')
+            joint_axs[1].grid(True)
+            joint_axs[1].legend()
+            
+            # Acceleration comparison
+            default_acc_norm = normalize_data(default_data[joint_idx][2])
+            optimized_acc_norm = normalize_data(optimized_data[joint_idx][2])
+            
+            joint_axs[2].plot(time, default_acc_norm, 'r--', label='Default Acceleration (Normalized)')
+            joint_axs[2].plot(time, optimized_acc_norm, 'b-', label='Optimized Acceleration (Normalized)')
+            joint_axs[2].set_title(f'Normalized Acceleration Comparison (Joint {joint_idx+1})')
+            joint_axs[2].set_xlabel('Time')
+            joint_axs[2].set_ylabel('Acceleration (Normalized)')
+            joint_axs[2].grid(True)
+            joint_axs[2].legend()
+            
+            # Add velocity ranges
+            joint_fig.text(0.5, 0.01, 
+                     f"Default velocity range: [{min(default_data[joint_idx][1]):.2f}, {max(default_data[joint_idx][1]):.2f}] | " +
+                     f"Optimized velocity range: [{min(optimized_data[joint_idx][1]):.2f}, {max(optimized_data[joint_idx][1]):.2f}]",
+                     ha='center', fontsize=10)
+            
+            plt.tight_layout(rect=[0, 0.03, 1, 1])
+            
+            # Save the plot to file
+            joint_plot_file = os.path.join(run_dir, f"joint_{joint_idx+1}_comparison.png")
+            joint_fig.savefig(joint_plot_file)
+            plt.close(joint_fig)  # Close this figure to avoid displaying it
+        
+        # Additionally save the optimization history
+        history_fig, history_ax = plt.subplots(figsize=(10, 6))
+        history_ax.plot(fitness_history)
+        history_ax.set_title(f'Fitness History - {metric}')
+        history_ax.set_xlabel('Iteration')
+        history_ax.set_ylabel('Fitness Value')
+        history_ax.grid(True)
+        
+        # Save the history plot
+        history_file = os.path.join(run_dir, "optimization_history.png")
+        history_fig.savefig(history_file)
+        plt.close(history_fig)
+        
+        # Also create a combined plot with absolute data (non-normalized) for analysis
+        abs_fig, abs_axs = plt.subplots(3, len(start_joint), figsize=(16, 12))
+        abs_fig.suptitle(f'Absolute Trajectory Data Comparison (All Joints)', fontsize=16)
+        
+        for joint_idx in range(len(start_joint)):
+            # Use actual values (not normalized)
+            # Position
+            abs_axs[0, joint_idx].plot(time, default_data[joint_idx][0], 'r--', label='Default')
+            abs_axs[0, joint_idx].plot(time, optimized_data[joint_idx][0], 'b-', label='Optimized')
+            abs_axs[0, joint_idx].set_title(f'Joint {joint_idx+1} Position')
+            abs_axs[0, joint_idx].grid(True)
+            abs_axs[0, joint_idx].legend()
+            
+            # Velocity
+            abs_axs[1, joint_idx].plot(time, default_data[joint_idx][1], 'r--', label='Default')
+            abs_axs[1, joint_idx].plot(time, optimized_data[joint_idx][1], 'b-', label='Optimized')
+            abs_axs[1, joint_idx].set_title(f'Joint {joint_idx+1} Velocity')
+            abs_axs[1, joint_idx].grid(True)
+            
+            # Acceleration
+            abs_axs[2, joint_idx].plot(time, default_data[joint_idx][2], 'r--', label='Default')
+            abs_axs[2, joint_idx].plot(time, optimized_data[joint_idx][2], 'b-', label='Optimized')
+            abs_axs[2, joint_idx].set_title(f'Joint {joint_idx+1} Acceleration')
+            abs_axs[2, joint_idx].grid(True)
+        
+        # Set common labels for rows
+        abs_axs[0, 0].set_ylabel('Position')
+        abs_axs[1, 0].set_ylabel('Velocity')
+        abs_axs[2, 0].set_ylabel('Acceleration')
+        
+        # Set common x-axis label for bottom row
+        for j in range(len(start_joint)):
+            abs_axs[2, j].set_xlabel('Time')
+        
+        plt.tight_layout()
+        
+        # Save the combined absolute plot
+        abs_plot_file = os.path.join(run_dir, "all_joints_absolute_comparison.png")
+        abs_fig.savefig(abs_plot_file)
+        plt.close(abs_fig)
+        
+        # Inform the user where the plots are saved
+        messagebox.showinfo("Plots Saved", 
+                           f"Comparison plots for all joints have been saved to:\n\n{run_dir}\n\nMetric: {metric}\nTimestamp: {timestamp}")
         
         print("Comparison complete!")
         

@@ -2,8 +2,13 @@ __pycache__/
 pyenv/
 venv/
 <<<<<<< HEAD
+<<<<<<< HEAD
 __pycache__/
 pyenv/
 venv/
 =======
 >>>>>>> 4581370 (Add pso_integration)
+=======
+traj/
+trajectory_plots/
+>>>>>>> 340cbcf (Added Visualization Exports + New Metric)

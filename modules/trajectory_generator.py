@@ -402,13 +402,13 @@ class TrapezoidVelocity():
         - accel/decel magnitudes based on v_cruise
         """
         if hasattr(self, 'optimization_params') and self.optimization_params is not None:
-            print("In solve(): Using optimization params:", self.optimization_params)
             # Use optimized parameters
             for i in range(self.ndof):
                 p = self.optimization_params
                 t_accel = p['t1'] * self.T
                 t_decel = p['t2'] * self.T
                 t_cruise = self.T - t_accel - t_decel
+                
                 
                 v_cruise = p['v_max']
                 accel = v_cruise / t_accel if t_accel > 0 else 0
@@ -423,7 +423,6 @@ class TrapezoidVelocity():
                     't_decel': self.T
                 }
         else:
-            print("In solve(): Using default ratios:", self.accel_time_ratio, self.decel_time_ratio)
             for i in range(self.ndof):
                 # Phase durations
                 t_accel = self.T * self.accel_time_ratio   # time accelerating
@@ -483,8 +482,6 @@ class TrapezoidVelocity():
             else:
                     print("Using default ratios:", self.accel_time_ratio, self.decel_time_ratio)
             self.solve()
-            print("Resulting parameters for joint 1:")
-            print("t_accel:", self.params[0]['t_accel'], "v_cruise:", self.params[0]['v_cruise'])
             
             self.t = np.linspace(0, self.T, nsteps)
 
