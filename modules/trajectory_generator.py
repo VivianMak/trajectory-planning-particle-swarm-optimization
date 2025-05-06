@@ -1,14 +1,22 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from simulator.modules.trajectory_generator import MultiAxisTrajectoryGenerator
+from particles import TrajectoryOptimizer #add_pso_trajectory_optimization
+from simulator.main_arm import Visualizer
+import tkinter as tk
+import sys
 
 
-class MultiAxisTrajectoryGenerator():
-    """
-    Multi-axis trajectory generator for joint or task space trajectories.
 
-    Supports linear, cubic, quintic polynomial, and trapezoidal velocity profiles.
-    """
+def main():
+
+    print("Testing PSO Trajectory Optimization")
+    print("-----------------------------------")
+
+    optimizer = TrajectoryOptimizer()
+    optimizer.test()
     
+<<<<<<< HEAD:modules/trajectory_generator.py
     def __init__(self, method="trapezoid",
                  mode="joint",
                  interval=[0,1],
@@ -73,56 +81,62 @@ class MultiAxisTrajectoryGenerator():
         if hasattr(self, 'm') and hasattr(self.m, 'reset_parameters'):
             self.m.reset_parameters()
 
+=======
+    # Define start and end joint positions
+    start_joint = [0, 0, 0, 0, 0]
+    end_joint = [30, 45, -15, 20, 10]
+>>>>>>> ade2681 (worked on vivian_test branch):trajectory.py
     
-    def generate(self, nsteps=100):
-        """
-        Generate the trajectory at discrete time steps.
-
-        Args:
-            nsteps (int): Number of time steps.
-        Returns:
-            list: List of position, velocity, acceleration for each DOF.
-        """
-        self.t = np.linspace(0, self.T, nsteps)
-        return self.m.generate(nsteps=nsteps)
-
-
-    def plot(self):
-        """
-        Plot the position, velocity, and acceleration trajectories.
-        """
-        self.fig = plt.figure()
-        self.sub1 = self.fig.add_subplot(3,1,1)  # Position plot
-        self.sub2 = self.fig.add_subplot(3,1,2)  # Velocity plot
-        self.sub3 = self.fig.add_subplot(3,1,3)  # Acceleration plot
-
-        self.fig.set_size_inches(8, 10)    
-        self.fig.suptitle(self.mode + " Trajectory Generator", fontsize=16)
-
-        colors = ['r', 'g', 'b', 'm', 'y']
-
-        for i in range(self.ndof):
-            # position plot
-            self.sub1.plot(self.t, self.m.X[i][0], colors[i]+'o-', label=self.labels[i])
-            self.sub1.set_ylabel('position', fontsize=15)
-            self.sub1.grid(True)
-            self.sub1.legend()
+    print(f"Start position: {start_joint}")
+    print(f"End position: {end_joint}")
+    
+    # Create optimizer with various metrics
+    metrics = ["min_jerk", "min_time", "combined"]
+    
+    for metric in metrics:
+        print(f"\nOptimizing with '{metric}' metric:")
         
-            # velocity plot
-            self.sub2.plot(self.t, self.m.X[i][1], colors[i]+'o-', label=self.labels[i])
-            self.sub2.set_ylabel('velocity', fontsize=15)
-            self.sub2.grid(True)
-            self.sub2.legend()
+        # Create and run optimizer
+        optimizer = TrajectoryOptimizer(
+            metric=metric,
+        )
 
-            # acceleration plot
-            self.sub3.plot(self.t, self.m.X[i][2], colors[i]+'o-', label=self.labels[i])
-            self.sub3.set_ylabel('acceleration', fontsize=15)
-            self.sub3.set_xlabel('Time (secs)', fontsize=18)
-            self.sub3.grid(True)
-            self.sub3.legend()
+        # Run optimization
+        best_params, fitness_history = optimizer.optimization()
 
+        # Get optimization parameters
+        params = optimizer.get_optimized_parameters()
+        print(f"Optimized parameters: t1={params['t1']:.3f}, t2={params['t2']:.3f}, v_max={params['v_max']:.3f}")
+        
+        # Create trajectory WITHOUT optimization_params
+        traj = MultiAxisTrajectoryGenerator(
+            method="trapezoid",
+            mode="joint" if len(start_joint) > 3 else "task",
+            interval=[0, 1],
+            ndof=len(start_joint),
+            start_pos=start_joint,
+            final_pos=end_joint
+        )
+
+        # Manually add the optimization_params to the trajectory object
+        traj.optimization_params = params
+        
+        # Generate trajectory
+        traj_data = traj.generate(nsteps=100)
+        
+        # Plot trajectory 
+        traj.plot()
+        
+        # Plot fitness history
+        plt.figure(figsize=(10, 6))
+        plt.plot(fitness_history)
+        plt.title(f'Fitness History - {metric}')
+        plt.xlabel('Iteration')
+        plt.ylabel('Fitness Value')
+        plt.grid(True)
         plt.show()
         
+<<<<<<< HEAD:modules/trajectory_generator.py
 
 
 class LinearInterp():
@@ -436,3 +450,6 @@ class TrapezoidVelocity():
         # Re-solve with default parameters
         self.solve()
 >>>>>>> 4581370 (Add pso_integration):modules/trajectory_generator.py
+=======
+        print(f"Trajectory with '{metric}' metric generated successfully!")
+>>>>>>> ade2681 (worked on vivian_test branch):trajectory.py
