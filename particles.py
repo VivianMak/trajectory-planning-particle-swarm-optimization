@@ -27,6 +27,8 @@ class Particle():
 
         self.p_best = None  # Particle Personal Best
 
+        self.particle_fitness_history = []
+
 
 
 
@@ -50,13 +52,15 @@ class TrajectoryOptimizer():
         self.v_max = 20
 
         self.fitness = None
-        self.particle_fitness_list = []
+        self.fitness_history = []
 
         self.alpha = 1      # Random Distrubance Coefficient
         self.w_min = 1      # Intertia weight
-        self.w_max = 2
+        self.w_max = 10
         # self.c1 = 1     # Cognitive learning factors
         # self.c2 = 1     # Social learning factors
+        self.alpha = np.random.rand([0.0, 1.0])
+        self.beta = np.random.rand([0.0, 1.0])
 
         self.global_best = None
 
@@ -134,21 +138,22 @@ class TrajectoryOptimizer():
         r2 = np.random.rand([0.0, 1.0])  # Random numbers for social component
         D = np.random.rand([-1.0, 1.0])
 
-        w = self.w_max - (self.w_max - self.w_min) * (iteration / self.iterations)
+        w = self.w_max - (self.w_max - self.w_min) * ((self.fitness - f_min) / (f_avg - f_min))
 
-        c1 = r1 * (p.p_best - p.pos)     # Cognitive learning factors
-        c2 = r2 * (self.global_best - p.pos)     # Social learning factors
-
+        f_min = min(p.particle_fitness_history)
+        f_avg = sum(p.particle_fitness_history) / len(p.particle_fitness_history)
+        # Cognitive learning factors
+        c1 = self.alpha * ((self.fitness - f_min) / (f_avg - f_min)) + self.beta
+        # Social learning factors
+        c2 = self.alpha * (1 - (self.fitness - f_min) / (f_avg - f_min)) + self.beta 
 
         old_pos = p.pos
         old_vel = p.vel
 
         # Calculate new veloctiy
-        p.vel =  (w * old_vel) + (self.c1 * r1 * (p.p_best - old_pos)) + (self.c2 * r2 * (self.global_best - old_pos))
+        p.vel =  (w * old_vel) + (c1 * r1 * (p.p_best - old_pos)) + (c2 * r2 * (self.global_best - old_pos)) + self.alpha + D
 
         p.pos = old_pos + p.vel
-
-        pass
     
     def test(self):
         print("HELLO???")
@@ -165,7 +170,6 @@ class TrajectoryOptimizer():
             for p in self.particle_cloud:
                 self.objective_function()
 
-            
                 # update particle individual optimal solution
                 # when the fitness exceeds indv optimal solution, update pos and velocity
                 if self.fitness > p.p_best:
@@ -177,8 +181,10 @@ class TrajectoryOptimizer():
                 # Update each particle's position, velocity, personal best
                 self.update(p, i)
 
-            # Add each particle's fitness value to a list to compare best solutions
-            self.particle_fitness_list.append(self.global_best)
+                p.particle_fitness_history.apped(self.fitness)
+
+            # Add global best of eahc iteration
+            self.fitness_history.append(self.global_best)
 
             ##################################
             # Print progress every 10 iterations
@@ -192,7 +198,7 @@ class TrajectoryOptimizer():
             print(f"Best Parameters: t1={self.global_best[0]:.3f}, t2={self.global_best[1]:.3f}, v_max={self.global_best[2]:.3f}")
             print(f"Best Fitness: {self.global_best}")
         
-        return self.global_best, self.particle_fitness_list
+        return self.global_best, self.fitness_history
 
     def get_optimized_parameters(self):
         """Return the optimized trajectory parameters.
