@@ -41,3 +41,5 @@ $ python main_arm.py --robot_type 5-dof
 
 ### Usage Guide
 <img src = "media/arm-kinematics-viz-tool.png">
+
+In addition, when you click **“Compare with Default**, the tool automatically generates side‑by‑side plots—both **raw and normalised**—of position, velocity and acceleration for every joint, and saves them in `trajectory_plots/<metric>_<timestamp>/` for easy inspection.

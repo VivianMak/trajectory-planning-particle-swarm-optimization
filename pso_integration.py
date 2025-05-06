@@ -295,7 +295,7 @@ def compare_with_default(visualizer):
             data_min = min(data)
             data_max = max(data)
             if data_max == data_min:
-                return [0.5] * len(data)  # Handle constant data
+                return [0.5] * len(data)
             return [(x - data_min) / (data_max - data_min) for x in data]
         
         # Time array for plotting
@@ -351,112 +351,46 @@ def compare_with_default(visualizer):
                  ha='center', fontsize=10)
         
         plt.tight_layout(rect=[0, 0.03, 1, 1])
-        plt.show()
+
+        normalised_fig, normalised_axs = plt.subplots(3, 5, figsize=(20, 10))
+
+        for joint in range(5):
+            # --- position ---
+            normalised_axs[0, joint].plot(
+                time, normalize_data(default_data[joint][0]), 'r--', label='Default')
+            normalised_axs[0, joint].plot(
+                time, normalize_data(optimized_data[joint][0]), 'b-', label='Optimised')
+            normalised_axs[0, joint].set_title(f'Joint {joint+1} – Position')
+            normalised_axs[0, joint].set_ylabel('Position (norm)')
+            normalised_axs[0, joint].grid(True)
+
+            # --- velocity ---
+            normalised_axs[1, joint].plot(
+                time, normalize_data(default_data[joint][1]), 'r--')
+            normalised_axs[1, joint].plot(
+                time, normalize_data(optimized_data[joint][1]), 'b-')
+            normalised_axs[1, joint].set_title(f'Joint {joint+1} – Velocity')
+            normalised_axs[1, joint].set_ylabel('Velocity (norm)')
+            normalised_axs[1, joint].grid(True)
+
+            # --- acceleration ---
+            normalised_axs[2, joint].plot(
+                time, normalize_data(default_data[joint][2]), 'r--')
+            normalised_axs[2, joint].plot(
+                time, normalize_data(optimized_data[joint][2]), 'b-')
+            normalised_axs[2, joint].set_title(f'Joint {joint+1} – Acceleration')
+            normalised_axs[2, joint].set_ylabel('Acceleration (norm)')
+            normalised_axs[2, joint].set_xlabel('Time')
+            normalised_axs[2, joint].grid(True)
+
+        normalised_axs[0, 0].legend()
+        normalised_fig.tight_layout()
+        # NEW CODE – save normalised comparison
+        normalised_file = os.path.join(run_dir, "all_joints_normalised_comparison.png")
+        normalised_fig.savefig(normalised_file)
+        plt.close(normalised_fig)
+
         
-        # # Show only Joint 1 in GUI (as before)
-        # fig, axs = plt.subplots(3, 1, figsize=(12, 15))
-        
-        # # Position comparison (first joint) - NORMALIZED
-        # default_pos_norm = normalize_data(default_data[0][0])
-        # optimized_pos_norm = normalize_data(optimized_data[0][0])
-        
-        # axs[0].plot(time, default_pos_norm, 'r--', label='Default Position (Normalized)')
-        # axs[0].plot(time, optimized_pos_norm, 'b-', label='Optimized Position (Normalized)')
-        # axs[0].set_title('Normalized Position Comparison (Joint 1)')
-        # axs[0].set_ylabel('Position (Normalized)')
-        # axs[0].grid(True)
-        # axs[0].legend()
-        
-        # # Velocity comparison - NORMALIZED
-        # default_vel_norm = normalize_data(default_data[0][1])
-        # optimized_vel_norm = normalize_data(optimized_data[0][1])
-        
-        # axs[1].plot(time, default_vel_norm, 'r--', label='Default Velocity (Normalized)')
-        # axs[1].plot(time, optimized_vel_norm, 'b-', label='Optimized Velocity (Normalized)')
-        # axs[1].set_title('Normalized Velocity Comparison (Joint 1)')
-        # axs[1].set_ylabel('Velocity (Normalized)')
-        # axs[1].grid(True)
-        # axs[1].legend()
-        
-        # # Acceleration comparison - NORMALIZED
-        # default_acc_norm = normalize_data(default_data[0][2])
-        # optimized_acc_norm = normalize_data(optimized_data[0][2])
-        
-        # axs[2].plot(time, default_acc_norm, 'r--', label='Default Acceleration (Normalized)')
-        # axs[2].plot(time, optimized_acc_norm, 'b-', label='Optimized Acceleration (Normalized)')
-        # axs[2].set_title('Normalized Acceleration Comparison (Joint 1)')
-        # axs[2].set_xlabel('Time')
-        # axs[2].set_ylabel('Acceleration (Normalized)')
-        # axs[2].grid(True)
-        # axs[2].legend()
-        
-        # # Add extra info about the scales
-        # fig.text(0.5, 0.01, 
-        #          f"Default velocity range: [{min(default_data[0][1]):.2f}, {max(default_data[0][1]):.2f}] | " +
-        #          f"Optimized velocity range: [{min(optimized_data[0][1]):.2f}, {max(optimized_data[0][1]):.2f}]",
-        #          ha='center', fontsize=10)
-        
-        # plt.tight_layout(rect=[0, 0.03, 1, 1])  # Adjust layout to make room for the text
-        
-        # # Save the main displayed plot
-        # main_plot_file = os.path.join(run_dir, "joint1_main_display.png")
-        # fig.savefig(main_plot_file)
-        # plt.show()  # Still show Joint 1 plot interactively
-        
-        # # Generate and save plots for ALL joints
-        # for joint_idx in range(len(start_joint)):
-        #     # Create a figure for this joint
-        #     joint_fig, joint_axs = plt.subplots(3, 1, figsize=(12, 15))
-        #     joint_fig.suptitle(f'Joint {joint_idx+1} Trajectory Comparison', fontsize=16)
-            
-        #     # Position comparison
-        #     default_pos_norm = normalize_data(default_data[joint_idx][0])
-        #     optimized_pos_norm = normalize_data(optimized_data[joint_idx][0])
-            
-        #     joint_axs[0].plot(time, default_pos_norm, 'r--', label='Default Position (Normalized)')
-        #     joint_axs[0].plot(time, optimized_pos_norm, 'b-', label='Optimized Position (Normalized)')
-        #     joint_axs[0].set_title(f'Normalized Position Comparison (Joint {joint_idx+1})')
-        #     joint_axs[0].set_ylabel('Position (Normalized)')
-        #     joint_axs[0].grid(True)
-        #     joint_axs[0].legend()
-            
-        #     # Velocity comparison
-        #     default_vel_norm = normalize_data(default_data[joint_idx][1])
-        #     optimized_vel_norm = normalize_data(optimized_data[joint_idx][1])
-            
-        #     joint_axs[1].plot(time, default_vel_norm, 'r--', label='Default Velocity (Normalized)')
-        #     joint_axs[1].plot(time, optimized_vel_norm, 'b-', label='Optimized Velocity (Normalized)')
-        #     joint_axs[1].set_title(f'Normalized Velocity Comparison (Joint {joint_idx+1})')
-        #     joint_axs[1].set_ylabel('Velocity (Normalized)')
-        #     joint_axs[1].grid(True)
-        #     joint_axs[1].legend()
-            
-        #     # Acceleration comparison
-        #     default_acc_norm = normalize_data(default_data[joint_idx][2])
-        #     optimized_acc_norm = normalize_data(optimized_data[joint_idx][2])
-            
-        #     joint_axs[2].plot(time, default_acc_norm, 'r--', label='Default Acceleration (Normalized)')
-        #     joint_axs[2].plot(time, optimized_acc_norm, 'b-', label='Optimized Acceleration (Normalized)')
-        #     joint_axs[2].set_title(f'Normalized Acceleration Comparison (Joint {joint_idx+1})')
-        #     joint_axs[2].set_xlabel('Time')
-        #     joint_axs[2].set_ylabel('Acceleration (Normalized)')
-        #     joint_axs[2].grid(True)
-        #     joint_axs[2].legend()
-            
-        #     # Add velocity ranges
-        #     joint_fig.text(0.5, 0.01, 
-        #              f"Default velocity range: [{min(default_data[joint_idx][1]):.2f}, {max(default_data[joint_idx][1]):.2f}] | " +
-        #              f"Optimized velocity range: [{min(optimized_data[joint_idx][1]):.2f}, {max(optimized_data[joint_idx][1]):.2f}]",
-        #              ha='center', fontsize=10)
-            
-        #     plt.tight_layout(rect=[0, 0.03, 1, 1])
-            
-        #     # Save the plot to file
-        #     joint_plot_file = os.path.join(run_dir, f"joint_{joint_idx+1}_comparison.png")
-        #     joint_fig.savefig(joint_plot_file)
-        #     plt.close(joint_fig)  # Close this figure to avoid displaying it
-        
-        # Additionally save the optimization history
         history_fig, history_ax = plt.subplots(figsize=(10, 6))
         history_ax.plot(fitness_history)
         history_ax.set_title(f'Fitness History - {metric}')
@@ -469,7 +403,7 @@ def compare_with_default(visualizer):
         history_fig.savefig(history_file)
         plt.close(history_fig)
         
-        # Also create a combined plot with absolute data (non-normalized) for analysis
+        # Create a combined plot with absolute data (non-normalized) for analysis
         abs_fig, abs_axs = plt.subplots(3, len(start_joint), figsize=(16, 12))
         abs_fig.suptitle(f'Absolute Trajectory Data Comparison (All Joints)', fontsize=16)
         
