@@ -13,7 +13,8 @@ The second paper presents a time-optimal trajectory planning method for a dulcim
 ## Results
 To read more about the project and results, check out our writeup and demo: 
 - [Report](PSO_Trajectory_Optimization.pdf)
-- [Demo Video](https://drive.google.com/file/d/1YdwvggKLrmf1WGced5zTqtRC5swXWiTm/view?resourcekey)
+- [Demo Video 1](https://drive.google.com/file/d/1YdwvggKLrmf1WGced5zTqtRC5swXWiTm/view?resourcekey)
+- [Demo Video 2 ](https://www.youtube.com/watch?v=XTrC-QfKDEs)
 
 ## Running the Simulator
 ### How to Run
